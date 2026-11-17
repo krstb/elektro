@@ -50,7 +50,7 @@
         <!-- Strecke & Akku-Basis -->
         <div class="grid grid-cols-2 gap-3">
             <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-2">
-                <label for="kmInput" class="text-xs font-bold text-gray-400 block">Gefahrene Strecke in km</label>
+                <label for="kmInput" class="text-xs font-bold text-gray-400 block">Strecke in km</label>
                 <input type="text" id="kmInput" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 text-base rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="km">
             </div>
             <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-2">
@@ -63,7 +63,7 @@
         <div class="grid grid-cols-2 gap-4">
             <!-- Fahrt, Verbrauch & Restwerte (Linke Spalte) -->
             <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-3">
-                <h2 class="text-base font-bold text-green-400 text-center">Fahrt & Verbrauch</h2>
+                <h2 class="text-base font-bold text-green-400 text-center">Verbrauch</h2>
                 <div>
                     <label for="kwhConsumption" class="block text-xs font-medium text-gray-400 mb-1">Verbr. (kWh / 100 km)</label>
                     <input type="text" id="kwhConsumption" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="z.B. 20,0">
@@ -81,11 +81,11 @@
                     <input type="text" id="euroOutputEv" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0">
                 </div>
                 <div>
-                    <label for="remainingEnergyOutput" class="block text-xs font-medium text-gray-400 mb-1">Restenergie (100%)</label>
+                    <label for="remainingEnergyOutput" class="block text-xs font-medium text-gray-400 mb-1">Restenergie</label>
                     <input type="text" id="remainingEnergyOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 kWh">
                 </div>
                 <div>
-                    <label for="remainingRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Restreichweite (100%)</label>
+                    <label for="remainingRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Restreichweite</label>
                     <input type="text" id="remainingRangeOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 km">
                 </div>
             </div>
@@ -94,19 +94,19 @@
             <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-3">
                 <h2 class="text-base font-bold text-blue-400 text-center">Laden & Dauer</h2>
                 <div>
-                    <label for="socStart" class="block text-xs font-medium text-gray-400 mb-1">Start-SOC (%)</label>
+                    <label for="socStart" class="block text-xs font-medium text-gray-400 mb-1">Start Laden (%)</label>
                     <input type="text" id="socStart" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 10">
                 </div>
                 <div>
-                    <label for="socEnd" class="block text-xs font-medium text-gray-400 mb-1">Ziel-SOC (%)</label>
+                    <label for="socEnd" class="block text-xs font-medium text-gray-400 mb-1">Ziel Kaeen (%)</label>
                     <input type="text" id="socEnd" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 80">
                 </div>
                 <div>
-                    <label for="chargingPower" class="block text-xs font-medium text-gray-400 mb-1">Ø-Ladeleistung (kW)</label>
+                    <label for="chargingPower" class="block text-xs font-medium text-gray-400 mb-1">Ladeleistung (kW)</label>
                     <div class="relative">
                         <input type="text" id="chargingPower" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 pr-8 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 200">
                         <select id="presetPower" class="absolute right-0 top-0 bottom-0 w-8 bg-transparent text-gray-300 text-xs focus:outline-none cursor-pointer opacity-90 hover:opacity-100 px-1">
-                            <option value="" disabled selected>▼</option>
+                            <option value="" disabled selected>.</option>
                             <option value="2.3">2,3 kW (Haushalt)</option>
                             <option value="11">11 kW (Wallbox)</option>
                             <option value="22">22 kW (Wallbox)</option>
@@ -126,7 +126,7 @@
                     <input type="text" id="chargeCostOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0,00 €">
                 </div>
                 <div>
-                    <label for="targetSocRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Reichweite bei Ziel-SOC</label>
+                    <label for="targetSocRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Reichweite</label>
                     <input type="text" id="targetSocRangeOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 km">
                 </div>
             </div>
