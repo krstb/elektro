@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eleltro-v1'; // Ändere v2 um Updates zu erzwingen
+const CACHE_NAME = 'eleltro-v2'; // Ändere v2 um Updates zu erzwingen
 const ASSETS = [
   'index.html',
   'manifest.json',
