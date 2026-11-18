@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elektro-v2';
+const CACHE_NAME = 'eleltro-v5'; // Ändere v2 um Updates zu erzwingen
 const ASSETS = [
   'index.html',
   'manifest.json',
@@ -7,7 +7,6 @@ const ASSETS = [
   'favicon.svg'
 ];
 
-// Installation: Dateien cachen
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,46 +16,53 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Aktivierung: Alte Caches aufräumen
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Lösche alten Cache:', cache);
+            return caches.delete(cache);
+          }
+        })
       );
     })
   );
-  self.claim();
 });
 
-// Fetch-Event mit GitHub-Erreichbarkeitsprüfung
+// Strategie: Hybrid mit Timeout für HTML
 self.addEventListener('fetch', (event) => {
-  // Wir prüfen hier primär HTML-Anfragen (oder alle GET-Requests)
-  event.respondWith(
-    (async () => {
-      try {
-        // Versuch 1: Testen, ob GitHub (oder eine externe Ressource) erreichbar ist
-        // Wir pingen eine leichte URL an (z.B. die GitHub-Startseite oder die eigene Domain)
-        const githubCheck = await fetch('https://github.com', { 
-          mode: 'no-cors', 
-          cache: 'no-store',
-          signal: AbortSignal.timeout(3000) // Timeout nach 3 Sekunden, falls das Portal hängt
-        });
+  const url = new URL(event.request.url);
 
-        // Wenn GitHub erreichbar ist, versuchen wir die frischeste Version aus dem Netz zu laden
-        const networkResponse = await fetch(event.request);
-        return networkResponse;
-      } catch (error) {
-        // Entweder komplett offline ODER im Captive Portal gefangen (GitHub nicht erreichbar)
-        // -> Fallback auf den lokalen Cache!
-        const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // Falls auch nicht im Cache, Standard-Fehler werfen
-        throw error;
-      }
-    })()
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      // Timeout-Logik: Netzwerkversuch vs. 3-Sekunden-Timer
+      Promise.race([
+        fetch(event.request).then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 3000)
+        )
+      ]).catch(() => caches.match(event.request)) // Bei Timeout oder Offline: Cache
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate für alle anderen Assets (Bilder, JS, CSS)
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      });
+    })
   );
 });
