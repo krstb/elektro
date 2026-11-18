@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elektro-v1';
+const CACHE_NAME = 'elektro-v2';
 const ASSETS = [
   'index.html',
   'manifest.json',
