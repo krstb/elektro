@@ -162,10 +162,11 @@
         const DEFAULT_NET_BATTERY = 94.0;
         const DEFAULT_KWH_CONSUMPTION = 20.0;
         const DEFAULT_KWH_PRICE = 0.36;
-        const DEFAULT_SOC_START = 10;
         const DEFAULT_SOC_END = 80;
         const DEFAULT_CHARGING_POWER = 200;
         const FIXED_EFFICIENCY = 0.90; // Fester Wirkungsgrad 90%
+
+        let isManualSocStart = false; // Flag, ob Start-SOC manuell überschrieben wurde
 
         function handleInput(e) {
             let cursorPosition = e.target.selectionStart;
@@ -187,6 +188,16 @@
             try {
                 e.target.setSelectionRange(cursorPosition, cursorPosition);
             } catch (err) {}
+
+            // Wenn der Benutzer den Start-SOC manuell ändert
+            if (e.target === socStartInput) {
+                isManualSocStart = true;
+            }
+
+            // Wenn sich Strecke oder Akku-Basis ändern, wieder auf Automatik schalten
+            if (e.target === kmInput || e.target === netBatteryInput || e.target === kwhConsumptionInput) {
+                isManualSocStart = false;
+            }
 
             calculateAndSave();
         }
@@ -249,11 +260,18 @@
                 const savedData = localStorage.getItem('evChargeCalculatorSettings');
                 if (savedData) {
                     const data = JSON.parse(savedData);
-                    kmInput.value = data.km !== null && data.km !== undefined ? formatToGermanString(data.km, 0) : formatToGermanString(DEFAULT_KM, 0);
+                    kmInput.value = data.km !== null && data.km !== undefined ? formatToGermanString(data.km, 0) : formatToGermanString(100, 0);
                     netBatteryInput.value = formatToGermanString(data.netBattery || DEFAULT_NET_BATTERY, 1);
                     kwhConsumptionInput.value = formatToGermanString(data.kwhConsumption || DEFAULT_KWH_CONSUMPTION, 1);
                     kwhPriceInput.value = formatToGermanString(data.kwhPrice || DEFAULT_KWH_PRICE, 2);
-                    socStartInput.value = formatToGermanString(data.socStart !== undefined ? data.socStart : DEFAULT_SOC_START, 0);
+                    
+                    if (data.socStart !== undefined && data.socStart !== null && data.socStart !== '') {
+                        socStartInput.value = formatToGermanString(data.socStart, 0);
+                        isManualSocStart = true; // Aus dem Speicher als initial manuell betrachten
+                    } else {
+                        isManualSocStart = false;
+                    }
+                    
                     socEndInput.value = formatToGermanString(data.socEnd !== undefined ? data.socEnd : DEFAULT_SOC_END, 0);
                     chargingPowerInput.value = formatToGermanString(data.chargingPower || DEFAULT_CHARGING_POWER, 0);
                 } else {
@@ -266,13 +284,14 @@
         }
 
         function setAllDefaults() {
-            kmInput.value = formatToGermanString(DEFAULT_KM, 0);
+            kmInput.value = formatToGermanString(100, 0);
             netBatteryInput.value = formatToGermanString(DEFAULT_NET_BATTERY, 1);
             kwhConsumptionInput.value = formatToGermanString(DEFAULT_KWH_CONSUMPTION, 1);
             kwhPriceInput.value = formatToGermanString(DEFAULT_KWH_PRICE, 2);
-            socStartInput.value = formatToGermanString(DEFAULT_SOC_START, 0);
+            socStartInput.value = '';
             socEndInput.value = formatToGermanString(DEFAULT_SOC_END, 0);
             chargingPowerInput.value = formatToGermanString(DEFAULT_CHARGING_POWER, 0);
+            isManualSocStart = false;
         }
 
         function formatNumericInput(event, decimals) {
@@ -370,13 +389,20 @@
 
             remainingRangeOutput.classList.remove('text-red-400');
 
-            if (!isNaN(netBattery) && !isNaN(kmDriven) && !isNaN(kwhConsumption) && kwhConsumption > 0) {
+            if (!isNaN(netBattery) && netBattery > 0 && !isNaN(kmDriven) && !isNaN(kwhConsumption) && kwhConsumption > 0) {
                 const startEnergyKwh = netBattery * 1.0; 
                 const drivenEnergyKwh = (kmDriven / 100) * kwhConsumption;
                 const remainingEnergyKwh = startEnergyKwh - drivenEnergyKwh;
                 const remainingRangeKm = (remainingEnergyKwh / kwhConsumption) * 100;
 
                 remainingEnergyOutput.value = formatToGermanString(remainingEnergyKwh, 1) + " kWh";
+
+                // Automatisch als Start-SOC setzen, solange der Nutzer nichts manuelles eingetragen hat
+                if (!isManualSocStart) {
+                    const remainingSoc = (remainingEnergyKwh / netBattery) * 100;
+                    const clampedSoc = Math.max(0, Math.min(100, remainingSoc));
+                    socStartInput.value = formatToGermanString(clampedSoc, 0);
+                }
 
                 if (remainingRangeKm < 0) {
                     remainingRangeOutput.value = "Akku leer! (" + formatToGermanString(remainingRangeKm, 0) + " km)";
@@ -392,8 +418,8 @@
 
         function calculateAll() {
             calculateEv();
-            calculateCharging();
             calculateRemainingBatteryAndRange();
+            calculateCharging();
         }
 
         function calculateAndSave() {
