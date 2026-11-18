@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lade- & Verbrauchsrechner</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png"> 
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="theme-color" content="#000000">
+    <meta name="color-scheme" content="light">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script>
+      // Service Worker Registrierung
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .catch(err => console.log('SW Fehler:', err));
+        });
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        /* Fix für PWA-Ränder und den blauen Balken */
+        html {
+            background-color: #000000 !important;
+            overscroll-behavior-y: none;
+        }
+        body {
+            background-color: #DC2626;
+            font-family: 'Inter', sans-serif; 
+        }
+        /* Versteckt die Pfeile bei Nummern-Inputs */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="text-white flex items-start justify-center min-h-screen p-4 pt-4" style="background-color: #DC2626;">
+    <div class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-4 space-y-4 border-2 border-gray-700">
+        <div class="text-center">
+            <h1 class="text-2xl font-bold text-white">Lade- & Verbrauchsrechner</h1>
+        </div>
+
+        <!-- Strecke & Akku-Basis -->
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-2">
+                <label for="kmInput" class="text-xs font-bold text-gray-400 block">Strecke in km</label>
+                <input type="text" id="kmInput" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 text-base rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="km">
+            </div>
+            <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-2">
+                <label for="netBatteryInput" class="text-xs font-bold text-gray-400 block">Netto-Akku (kWh)</label>
+                <input type="text" id="netBatteryInput" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 text-base rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="z.B. 94,0">
+            </div>
+        </div>
+
+        <!-- Sektionen 2x2 Grid -->
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Fahrt, Verbrauch & Restwerte (Linke Spalte) -->
+            <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-3">
+                <h2 class="text-base font-bold text-green-400 text-center">Verbrauch</h2>
+                <div>
+                    <label for="kwhConsumption" class="block text-xs font-medium text-gray-400 mb-1">Verbr. (kWh / 100 km)</label>
+                    <input type="text" id="kwhConsumption" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="z.B. 20,0">
+                </div>
+                <div>
+                    <label for="kwhPrice" class="block text-xs font-medium text-gray-400 mb-1">Preis (€ / kWh)</label>
+                    <input type="text" id="kwhPrice" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors" placeholder="z.B. 0,36">
+                </div>
+                <div>
+                    <label for="kwhOutput" class="block text-xs font-medium text-gray-400 mb-1">Verbrauch in kWh</label>
+                    <input type="text" id="kwhOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0">
+                </div>
+                <div>
+                    <label for="euroOutputEv" class="block text-xs font-medium text-gray-400 mb-1">Kosten in €</label>
+                    <input type="text" id="euroOutputEv" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0">
+                </div>
+                <div>
+                    <label for="remainingEnergyOutput" class="block text-xs font-medium text-gray-400 mb-1">Restenergie</label>
+                    <input type="text" id="remainingEnergyOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 kWh">
+                </div>
+                <div>
+                    <label for="remainingRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Restreichweite</label>
+                    <input type="text" id="remainingRangeOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 km">
+                </div>
+            </div>
+
+            <!-- Ladedauer & Ladekosten (Rechte Spalte) -->
+            <div class="bg-gray-900 border border-gray-700 p-3 rounded-lg space-y-3">
+                <h2 class="text-base font-bold text-blue-400 text-center">Laden & Dauer</h2>
+                <div>
+                    <label for="socStart" class="block text-xs font-medium text-gray-400 mb-1">Start Laden (%)</label>
+                    <input type="text" id="socStart" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 10">
+                </div>
+                <div>
+                    <label for="socEnd" class="block text-xs font-medium text-gray-400 mb-1">Ziel Laden (%)</label>
+                    <input type="text" id="socEnd" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 80">
+                </div>
+                <div>
+                    <label for="chargingPower" class="block text-xs font-medium text-gray-400 mb-1">Ladeleistung (kW)</label>
+                    <div class="relative">
+                        <input type="text" id="chargingPower" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full p-2 pr-8 rounded-md bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="z.B. 200">
+                        <select id="presetPower" class="absolute right-0 top-0 bottom-0 w-8 bg-transparent text-gray-300 text-xs focus:outline-none cursor-pointer opacity-90 hover:opacity-100 px-1">
+                            <option value="" disabled selected></option>
+                            <option value="2.3">2,3 kW (Haushalt)</option>
+                            <option value="11">11 kW (Wallbox)</option>
+                            <option value="22">22 kW (Wallbox)</option>
+                            <option value="50">50 kW (DC Schnell)</option>
+                            <option value="150">150 kW (DC Schnell)</option>
+                            <option value="200">200 kW (GLC 400 Ø)</option>
+                            <option value="300">300+ kW (HPC)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="chargingTimeOutput" class="block text-xs font-medium text-gray-400 mb-1">Ladedauer</label>
+                    <input type="text" id="chargingTimeOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 min">
+                </div>
+                <div>
+                    <label for="chargeCostOutput" class="block text-xs font-medium text-gray-400 mb-1">Ladekosten</label>
+                    <input type="text" id="chargeCostOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0,00 €">
+                </div>
+                <div>
+                    <label for="targetSocRangeOutput" class="block text-xs font-medium text-gray-400 mb-1">Reichweite</label>
+                    <input type="text" id="targetSocRangeOutput" readonly class="w-full p-2 rounded-md bg-gray-600 text-white font-bold cursor-not-allowed" placeholder="0 km">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const kmInput = document.getElementById('kmInput');
+        const netBatteryInput = document.getElementById('netBatteryInput');
+        
+        // Elektro Fahrt
+        const kwhConsumptionInput = document.getElementById('kwhConsumption');
+        const kwhPriceInput = document.getElementById('kwhPrice');
+        const kwhOutput = document.getElementById('kwhOutput');
+        const euroOutputEv = document.getElementById('euroOutputEv');
+
+        // Laden
+        const socStartInput = document.getElementById('socStart');
+        const socEndInput = document.getElementById('socEnd');
+        const chargingPowerInput = document.getElementById('chargingPower');
+        const presetPowerSelect = document.getElementById('presetPower');
+        const chargingTimeOutput = document.getElementById('chargingTimeOutput');
+        const chargeCostOutput = document.getElementById('chargeCostOutput');
+        const targetSocRangeOutput = document.getElementById('targetSocRangeOutput');
+
+        // Restreichweite & Akku (Links)
+        const remainingEnergyOutput = document.getElementById('remainingEnergyOutput');
+        const remainingRangeOutput = document.getElementById('remainingRangeOutput');
+
+        // --- Default values ---
+        const DEFAULT_KM = 100;
+        const DEFAULT_NET_BATTERY = 94.0;
+        const DEFAULT_KWH_CONSUMPTION = 20.0;
+        const DEFAULT_KWH_PRICE = 0.36;
+        const DEFAULT_SOC_END = 80;
+        const DEFAULT_CHARGING_POWER = 200;
+        const FIXED_EFFICIENCY = 0.90; // Fester Wirkungsgrad 90%
+
+        let isManualSocStart = false; // Flag, ob Start-SOC manuell überschrieben wurde
+
+        function handleInput(e) {
+            let cursorPosition = e.target.selectionStart;
+            let originalValue = e.target.value;
+
+            let normalizedValue = originalValue.replace(/\./g, ',');
+            let cleanValue = normalizedValue.replace(/[^0-9,]/g, '');
+
+            const parts = cleanValue.split(',');
+            if (parts.length > 2) {
+                cleanValue = parts[0] + ',' + parts.slice(1).join('');
+            }
+
+            e.target.value = cleanValue;
+
+            if (originalValue !== cleanValue) { 
+                cursorPosition = cursorPosition + (cleanValue.length - originalValue.length); 
+            }
+            try {
+                e.target.setSelectionRange(cursorPosition, cursorPosition);
+            } catch (err) {}
+
+            // Wenn der Benutzer den Start-SOC manuell ändert
+            if (e.target === socStartInput) {
+                isManualSocStart = true;
+            }
+
+            // Wenn sich Strecke oder Akku-Basis ändern, wieder auf Automatik schalten
+            if (e.target === kmInput || e.target === netBatteryInput || e.target === kwhConsumptionInput) {
+                isManualSocStart = false;
+            }
+
+            calculateAndSave();
+        }
+
+        function handleFocus(e) {
+            const rawValue = e.target.value.replace(/\./g, '');
+            if (rawValue) {
+                e.target.value = rawValue;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataFromLocalStorage();
+            addEventListeners();
+            calculateAll();
+        });
+
+        function parseGermanFloat(str) {
+            if (typeof str !== 'string') return NaN;
+            const cleaned = str.replace(/\./g, '').replace(',', '.');
+            if (cleaned.trim() === '') return NaN;
+            return parseFloat(cleaned);
+        }
+
+        function formatToGermanString(num, decimals) {
+            if (typeof num !== 'number' || isNaN(num)) return '';
+            return new Intl.NumberFormat('de-DE', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            }).format(num);
+        }
+
+        function addEventListeners() {
+            const numericInputs = [kmInput, netBatteryInput, kwhConsumptionInput, kwhPriceInput, socStartInput, socEndInput, chargingPowerInput];
+            
+            numericInputs.forEach(input => {
+                input.addEventListener('input', handleInput);
+                input.addEventListener('focus', handleFocus);
+            });
+
+            kwhConsumptionInput.addEventListener('blur', (e) => formatNumericInput(e, 1));
+            kwhPriceInput.addEventListener('blur', (e) => formatNumericInput(e, 2));
+            chargingPowerInput.addEventListener('blur', (e) => formatNumericInput(e, 0));
+            kmInput.addEventListener('blur', (e) => formatNumericInput(e, 0));
+            netBatteryInput.addEventListener('blur', (e) => formatNumericInput(e, 1));
+            socStartInput.addEventListener('blur', (e) => formatNumericInput(e, 0));
+            socEndInput.addEventListener('blur', (e) => formatNumericInput(e, 0));
+
+            presetPowerSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    chargingPowerInput.value = formatToGermanString(parseFloat(e.target.value), 0);
+                    calculateAndSave();
+                    presetPowerSelect.selectedIndex = 0; // Reset auf Dropdown-Pfeil
+                }
+            });
+        }
+
+        function loadDataFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('evChargeCalculatorSettings');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    kmInput.value = data.km !== null && data.km !== undefined ? formatToGermanString(data.km, 0) : formatToGermanString(100, 0);
+                    netBatteryInput.value = formatToGermanString(data.netBattery || DEFAULT_NET_BATTERY, 1);
+                    kwhConsumptionInput.value = formatToGermanString(data.kwhConsumption || DEFAULT_KWH_CONSUMPTION, 1);
+                    kwhPriceInput.value = formatToGermanString(data.kwhPrice || DEFAULT_KWH_PRICE, 2);
+                    
+                    if (data.socStart !== undefined && data.socStart !== null && data.socStart !== '') {
+                        socStartInput.value = formatToGermanString(data.socStart, 0);
+                        isManualSocStart = true; // Aus dem Speicher als initial manuell betrachten
+                    } else {
+                        isManualSocStart = false;
+                    }
+                    
+                    socEndInput.value = formatToGermanString(data.socEnd !== undefined ? data.socEnd : DEFAULT_SOC_END, 0);
+                    chargingPowerInput.value = formatToGermanString(data.chargingPower || DEFAULT_CHARGING_POWER, 0);
+                } else {
+                    setAllDefaults();
+                }
+            } catch (error) {
+                console.error("Fehler beim Laden:", error);
+                setAllDefaults();
+            }
+        }
+
+        function setAllDefaults() {
+            kmInput.value = formatToGermanString(100, 0);
+            netBatteryInput.value = formatToGermanString(DEFAULT_NET_BATTERY, 1);
+            kwhConsumptionInput.value = formatToGermanString(DEFAULT_KWH_CONSUMPTION, 1);
+            kwhPriceInput.value = formatToGermanString(DEFAULT_KWH_PRICE, 2);
+            socStartInput.value = '';
+            socEndInput.value = formatToGermanString(DEFAULT_SOC_END, 0);
+            chargingPowerInput.value = formatToGermanString(DEFAULT_CHARGING_POWER, 0);
+            isManualSocStart = false;
+        }
+
+        function formatNumericInput(event, decimals) {
+            const input = event.target;
+            const value = parseGermanFloat(input.value);
+            if (!isNaN(value)) {
+                const formattedValue = formatToGermanString(value, decimals);
+                if (input.value && input.value !== formattedValue) {
+                    input.value = formattedValue;
+                    calculateAndSave();
+                }
+            }
+        }
+
+        function saveDataToLocalStorage() {
+            try {
+                const dataToSave = {
+                    km: parseGermanFloat(kmInput.value),
+                    netBattery: parseGermanFloat(netBatteryInput.value),
+                    kwhConsumption: parseGermanFloat(kwhConsumptionInput.value),
+                    kwhPrice: parseGermanFloat(kwhPriceInput.value),
+                    socStart: parseGermanFloat(socStartInput.value),
+                    socEnd: parseGermanFloat(socEndInput.value),
+                    chargingPower: parseGermanFloat(chargingPowerInput.value),
+                };
+                localStorage.setItem('evChargeCalculatorSettings', JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error("Fehler beim Speichern:", error);
+            }
+        }
+
+        function calculateEv() {
+            const kmValue = parseGermanFloat(kmInput.value);
+            const kwhConsumption = parseGermanFloat(kwhConsumptionInput.value);
+            const kwhPrice = parseGermanFloat(kwhPriceInput.value);
+
+            if (!isNaN(kmValue) && !isNaN(kwhConsumption) && kwhConsumption > 0) {
+                const totalKwh = (kmValue / 100) * kwhConsumption;
+                kwhOutput.value = formatToGermanString(totalKwh, 1);
+
+                if (!isNaN(kwhPrice) && kwhPrice > 0) {
+                    const totalCost = totalKwh * kwhPrice;
+                    euroOutputEv.value = formatToGermanString(totalCost, 2);
+                } else {
+                    euroOutputEv.value = '';
+                }
+            } else {
+                kwhOutput.value = '';
+                euroOutputEv.value = '';
+            }
+        }
+
+        function calculateCharging() {
+            const netBattery = parseGermanFloat(netBatteryInput.value);
+            const socStart = parseGermanFloat(socStartInput.value);
+            const socEnd = parseGermanFloat(socEndInput.value);
+            const chargingPower = parseGermanFloat(chargingPowerInput.value);
+            const kwhPrice = parseGermanFloat(kwhPriceInput.value);
+            const kwhConsumption = parseGermanFloat(kwhConsumptionInput.value);
+
+            if (!isNaN(netBattery) && !isNaN(socStart) && !isNaN(socEnd) && socEnd > socStart && !isNaN(chargingPower) && chargingPower > 0) {
+                const socDiff = socEnd - socStart;
+                const netEnergyNeeded = netBattery * (socDiff / 100);
+                const grossEnergyNeeded = netEnergyNeeded / FIXED_EFFICIENCY;
+
+                const hours = netEnergyNeeded / chargingPower;
+                const totalMinutes = Math.round(hours * 60);
+                chargingTimeOutput.value = totalMinutes + " min";
+
+                if (!isNaN(kwhPrice) && kwhPrice > 0) {
+                    const chargeCost = grossEnergyNeeded * kwhPrice;
+                    chargeCostOutput.value = formatToGermanString(chargeCost, 2) + " €";
+                } else {
+                    chargeCostOutput.value = formatToGermanString(0, 2) + " €";
+                }
+
+                if (!isNaN(kwhConsumption) && kwhConsumption > 0) {
+                    const targetEnergyKwh = netBattery * (socEnd / 100);
+                    const targetRangeKm = (targetEnergyKwh / kwhConsumption) * 100;
+                    targetSocRangeOutput.value = formatToGermanString(targetRangeKm, 0) + " km";
+                } else {
+                    targetSocRangeOutput.value = '';
+                }
+            } else {
+                chargingTimeOutput.value = '';
+                chargeCostOutput.value = formatToGermanString(0, 2) + " €";
+                targetSocRangeOutput.value = '';
+            }
+        }
+
+        function calculateRemainingBatteryAndRange() {
+            const netBattery = parseGermanFloat(netBatteryInput.value);
+            const kmDriven = parseGermanFloat(kmInput.value);
+            const kwhConsumption = parseGermanFloat(kwhConsumptionInput.value);
+
+            remainingRangeOutput.classList.remove('text-red-400');
+
+            if (!isNaN(netBattery) && netBattery > 0 && !isNaN(kmDriven) && !isNaN(kwhConsumption) && kwhConsumption > 0) {
+                const startEnergyKwh = netBattery * 1.0; 
+                const drivenEnergyKwh = (kmDriven / 100) * kwhConsumption;
+                const remainingEnergyKwh = startEnergyKwh - drivenEnergyKwh;
+                const remainingRangeKm = (remainingEnergyKwh / kwhConsumption) * 100;
+
+                remainingEnergyOutput.value = formatToGermanString(remainingEnergyKwh, 1) + " kWh";
+
+                // Automatisch als Start-SOC setzen, solange der Nutzer nichts manuelles eingetragen hat
+                if (!isManualSocStart) {
+                    const remainingSoc = (remainingEnergyKwh / netBattery) * 100;
+                    const clampedSoc = Math.max(0, Math.min(100, remainingSoc));
+                    socStartInput.value = formatToGermanString(clampedSoc, 0);
+                }
+
+                if (remainingRangeKm < 0) {
+                    remainingRangeOutput.value = "Akku leer! (" + formatToGermanString(remainingRangeKm, 0) + " km)";
+                    remainingRangeOutput.classList.add('text-red-400');
+                } else {
+                    remainingRangeOutput.value = formatToGermanString(remainingRangeKm, 0) + " km";
+                }
+            } else {
+                remainingEnergyOutput.value = '';
+                remainingRangeOutput.value = '';
+            }
+        }
+
+        function calculateAll() {
+            calculateEv();
+            calculateRemainingBatteryAndRange();
+            calculateCharging();
+        }
+
+        function calculateAndSave() {
+            calculateAll();
+            saveDataToLocalStorage();
+        }
+    </script>
+</body>
+</html>
