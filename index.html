@@ -112,7 +112,7 @@
                             <option value="22">22 kW (Wallbox)</option>
                             <option value="50">50 kW (DC Schnell)</option>
                             <option value="150">150 kW (DC Schnell)</option>
-                            <option value="200">200 kW (GLC 400 Ø)</option>
+                            <option value="200">200 kW (GLC 400)</option>
                             <option value="300">300+ kW (HPC)</option>
                         </select>
                     </div>
@@ -164,9 +164,15 @@
         const DEFAULT_KWH_PRICE = 0.36;
         const DEFAULT_SOC_END = 80;
         const DEFAULT_CHARGING_POWER = 200;
+        const PRICE_WALLBOX = 0.40;
+        const PRICE_FAST_CHARGING = 0.80;
         const FIXED_EFFICIENCY = 0.90; // Fester Wirkungsgrad 90%
 
         let isManualSocStart = false; // Flag, ob Start-SOC manuell überschrieben wurde
+
+        function getChargePriceByPower(power) {
+            return power <= 22 ? PRICE_WALLBOX : PRICE_FAST_CHARGING;
+        }
 
         function handleInput(e) {
             let cursorPosition = e.target.selectionStart;
@@ -349,7 +355,6 @@
             const socStart = parseGermanFloat(socStartInput.value);
             const socEnd = parseGermanFloat(socEndInput.value);
             const chargingPower = parseGermanFloat(chargingPowerInput.value);
-            const kwhPrice = parseGermanFloat(kwhPriceInput.value);
             const kwhConsumption = parseGermanFloat(kwhConsumptionInput.value);
 
             if (!isNaN(netBattery) && !isNaN(socStart) && !isNaN(socEnd) && socEnd > socStart && !isNaN(chargingPower) && chargingPower > 0) {
@@ -361,12 +366,9 @@
                 const totalMinutes = Math.round(hours * 60);
                 chargingTimeOutput.value = totalMinutes + " min";
 
-                if (!isNaN(kwhPrice) && kwhPrice > 0) {
-                    const chargeCost = grossEnergyNeeded * kwhPrice;
-                    chargeCostOutput.value = formatToGermanString(chargeCost, 2) + " €";
-                } else {
-                    chargeCostOutput.value = formatToGermanString(0, 2) + " €";
-                }
+                const chargePrice = getChargePriceByPower(chargingPower);
+                const chargeCost = grossEnergyNeeded * chargePrice;
+                chargeCostOutput.value = formatToGermanString(chargeCost, 2) + " €";
 
                 if (!isNaN(kwhConsumption) && kwhConsumption > 0) {
                     const targetEnergyKwh = netBattery * (socEnd / 100);
